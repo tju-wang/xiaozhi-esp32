@@ -18,6 +18,10 @@
 #include "ota.h"
 #include "background_task.h"
 
+// #if CONFIG_USE_CAMERA
+#include "camera.h"
+// #endif
+
 #if CONFIG_USE_WAKE_WORD_DETECT
 #include "wake_word_detect.h"
 #endif
@@ -71,6 +75,13 @@ public:
     void PlaySound(const std::string_view& sound);
     bool CanEnterSleepMode();
 
+//[todo] 临时实现demo，需要优化
+// #if CONFIG_USE_CAMERA
+    bool camera_flag = false;
+// #endif
+
+    std::unique_ptr<Protocol> protocol_;
+
 private:
     Application();
     ~Application();
@@ -84,7 +95,7 @@ private:
     Ota ota_;
     std::mutex mutex_;
     std::list<std::function<void()>> main_tasks_;
-    std::unique_ptr<Protocol> protocol_;
+    // std::unique_ptr<Protocol> protocol_;
     EventGroupHandle_t event_group_ = nullptr;
     esp_timer_handle_t clock_timer_handle_ = nullptr;
     volatile DeviceState device_state_ = kDeviceStateUnknown;

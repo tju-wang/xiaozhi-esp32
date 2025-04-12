@@ -252,3 +252,11 @@ config USE_REALTIME_CHAT
         需要 ESP32 S3 与 AEC 开启，因为性能不够，不建议和微信聊天界面风格同时开启
         
 endmenu
+
+menu "Dog Customization"
+    config USE_CAMERA
+        bool "使用相机"
+        default y
+        help
+            启用相机功能
+endmenu

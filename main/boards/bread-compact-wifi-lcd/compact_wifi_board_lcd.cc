@@ -16,6 +16,9 @@
 #include <esp_lcd_panel_ops.h>
 #include <driver/spi_common.h>
 
+#include "esp_camera.h"
+#include "camera.h"
+
 #if defined(LCD_TYPE_ILI9341_SERIAL)
 #include "esp_lcd_ili9341.h"
 #endif
@@ -145,6 +148,23 @@ private:
             }
             app.ToggleChatState();
         });
+#if CONFIG_USE_CAMERA
+        //test  长按，激活摄像头
+        boot_button_.OnLongPress([this]() {
+            auto& app = Application::GetInstance();
+            app.camera_flag = !app.camera_flag;
+            ESP_LOGD(TAG, "camera active");
+            if(app.GetDeviceState() == kDeviceStateListening){
+                std::string message = app.camera_flag ? "照相已经打开了, 我看到眼前的东西了" : "相机关闭了, 我暂时看不到喽";
+                app.protocol_->SendWakeWordDetected(message);
+                ESP_LOGD(TAG, "send camera request");
+            }
+            else
+            {
+                ESP_LOGD(TAG, "camera abort. DeviceState %d", app.GetDeviceState());
+            }
+        });
+#endif
     }
 
     // 物联网初始化，添加对 AI 可见设备

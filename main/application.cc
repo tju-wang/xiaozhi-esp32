@@ -451,6 +451,10 @@ void Application::Start() {
         vTaskDelete(NULL);
     }, "check_new_version", 4096 * 2, this, 2, nullptr);
 
+#if CONFIG_USE_CAMERA
+    start_webserver();
+#endif
+
 #if CONFIG_USE_AUDIO_PROCESSOR
     audio_processor_.Initialize(codec, realtime_chat_enabled_);
     audio_processor_.OnOutput([this](std::vector<int16_t>&& data) {

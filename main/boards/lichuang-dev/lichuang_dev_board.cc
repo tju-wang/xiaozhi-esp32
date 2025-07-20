@@ -16,7 +16,9 @@
 #include <esp_lcd_touch_ft5x06.h>
 #include <esp_lvgl_port.h>
 #include <lvgl.h>
-
+#include <driver/uart.h>
+#include <cstring>
+#include "mcp_server.h"
 
 #define TAG "LichuangDevBoard"
 
@@ -240,6 +242,30 @@ private:
         camera_ = new Esp32Camera(config);
     }
 
+    void InitializeSerial() {
+
+        const uart_config_t uart_config = {
+        .baud_rate = UART_BAUD_RATE,
+        .data_bits = UART_DATA_8_BITS,
+        .parity = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+        .source_clk = UART_SCLK_DEFAULT,
+        };
+        // We won't use a buffer for sending data.
+        uart_driver_install(UART_NUM_1, RX_BUF_SIZE * 2, 0, 0, NULL, 0);
+        uart_param_config(UART_NUM_1, &uart_config);
+        uart_set_pin(UART_NUM_1, TXD_PIN, RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+    }
+
+    int sendUartData(const char* logName, const char* data)
+    {
+        const int len = strlen(data);
+        const int txBytes = uart_write_bytes(UART_NUM_1, data, len);
+        ESP_LOGI(logName, "uart send %d bytes", txBytes);
+        return txBytes;
+    }
+
 public:
     LichuangDevBoard() : boot_button_(BOOT_BUTTON_GPIO) {
         InitializeI2c();
@@ -248,12 +274,65 @@ public:
         InitializeTouch();
         InitializeButtons();
         InitializeCamera();
+        InitializeSerial();
 
-#if CONFIG_IOT_PROTOCOL_XIAOZHI
+// #if CONFIG_IOT_PROTOCOL_XIAOZHI
         auto& thing_manager = iot::ThingManager::GetInstance();
         thing_manager.AddThing(iot::CreateThing("Speaker"));
         thing_manager.AddThing(iot::CreateThing("Screen"));
-#endif
+
+        auto& mcp_server = McpServer::GetInstance();
+
+        mcp_server.AddTool("self.dog.action_group", "机器人预设动作组。可用动作组及编号:\n"
+            "1: 左脚踢球\n2: 右脚踢球\n3: 四脚站立\n4: 坐下\n5: 趴下\n6: 双脚站立\n7: 握手\n8: 作揖\n"
+            "9: 点头\n10: 拳击\n11: 伸懒腰\n12: 撒尿\n13: 俯卧撑\n14: 转动PITCH\n15: 转动ROLL\n16: 立正",
+            PropertyList({
+                Property("action_number", kPropertyTypeInteger),
+            }), [this](const PropertyList& properties) -> ReturnValue {
+                int action = properties["action_number"].value<int>();
+                std::string command = "CMD|2|1|" + std::to_string(action) + "|$";
+                sendUartData("action_group", command.c_str());
+                return true;
+            });
+
+        mcp_server.AddTool("self.dog.basic_control", "机器人的基础动作。机器人可以做以下基础动作：\n"
+            "forward: 持续向前移动 (代码3)\n"
+            "small_right_forward: 持续小幅度右前转 (代码1)\n"
+            "large_right_forward: 持续大幅度右前转 (代码2)\n"
+            "large_left_forward: 持续大幅度左前转 (代码4)\n"
+            "small_left_forward: 持续小幅度左前转 (代码5)\n"
+            "large_left_backward: 持续大幅度左后转 (代码6)\n"
+            "forward: 持续向后移动 (代码7)\n"
+            "large_right_backward: 持续大幅度右后转 (代码8)\n"
+            "stop: 立即停止当前动作 (代码0)", 
+            PropertyList({
+                Property("action", kPropertyTypeString),
+            }), [this](const PropertyList& properties) -> ReturnValue {
+                const std::string& action = properties["action"].value<std::string>();
+                if (action == "forward") {
+                    sendUartData("go_forward", "CMD|3|3|$");
+                } else if (action == "small_right_forward") {
+                    sendUartData("small_right_forward", "CMD|3|1|$");
+                } else if (action == "large_right_forward") {
+                    sendUartData("large_right_forward", "CMD|3|2|$");
+                } else if (action == "large_left_forward") {
+                    sendUartData("large_left_forward", "CMD|3|4|$");
+                } else if (action == "small_left_forward") {
+                    sendUartData("small_left_forward", "CMD|3|5|$");
+                } else if (action == "large_left_backward") {
+                    sendUartData("large_left_backward", "CMD|3|6|$");
+                } else if (action == "backward") {
+                    sendUartData("go_backward", "CMD|3|7|$");
+                } else if (action == "large_right_backward") {
+                    sendUartData("large_right_backward", "CMD|3|8|$");
+                } else if (action == "stop") {
+                    sendUartData("go_stop", "CMD|3|0|$");
+                } else {
+                    return false;
+                }
+                return true;
+            });
+// #endif
         GetBacklight()->RestoreBrightness();
     }
 

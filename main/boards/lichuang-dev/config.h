@@ -58,5 +58,12 @@
 
 #define XCLK_FREQ_HZ 24000000
 
+//dog uart
+static const int RX_BUF_SIZE = 1024;
+#define UART_BAUD_RATE  9600
+#define TXD_PIN         GPIO_NUM_10
+#define RXD_PIN         GPIO_NUM_11
+
+#define UART_PIN_NO_CHANGE      (-1)
 
 #endif // _BOARD_CONFIG_H_

@@ -90,6 +90,9 @@ Application::Application() {
 }
 
 Application::~Application() {
+    if (ultrasonic_task_handle_ != nullptr) {
+        vTaskDelete(ultrasonic_task_handle_);
+    }
     if (clock_timer_handle_ != nullptr) {
         esp_timer_stop(clock_timer_handle_);
         esp_timer_delete(clock_timer_handle_);
@@ -98,6 +101,53 @@ Application::~Application() {
         delete background_task_;
     }
     vEventGroupDelete(event_group_);
+}
+
+#define FILTER_N 3                //递推平均滤波法
+int filter_buf[FILTER_N + 1];
+int Filter(Ultrasound* ultrasonic) {
+    int i;
+    int filter_sum = 0;
+    filter_buf[FILTER_N] = ultrasonic->getDistance();     //读取超声波测值
+    for(i = 0; i < FILTER_N; i++) {
+        filter_buf[i] = filter_buf[i + 1];               // 所有数据左移，低位仍掉
+        filter_sum += filter_buf[i];
+    }
+    return (int)(filter_sum / FILTER_N);
+}
+
+void Application::UltrasonicLoop() {
+    auto ultrasonic = Board::GetInstance().GetUltrasound();
+    constexpr TickType_t xDelay = pdMS_TO_TICKS(100); // 100ms间隔
+    
+    while (true) {
+        uint16_t distance = Filter(ultrasonic);
+        // 处理测量数据...
+        // ESP_LOGI(TAG, "Ultrasonic distance: %d mm", distance);
+
+        if (distance < 1000) { // 距离<50cm切换红灯
+            ultrasonic->setSolidColor(20, 0, 0, 20, 0, 0);
+
+            if (distance < 500) {
+                //Trigger
+                ultrasonic->setBreathingMode(1, 0, 0, 1, 0, 0);
+                if (device_state_ == kDeviceStateIdle) {
+                    ESP_LOGI(TAG, "call WakeWordInvoke %d", device_state_);
+                    std::string wake_word="向主人汇报危险,并通过MCP调用摄像头看前边有什么";
+                    Application::GetInstance().WakeWordInvoke(wake_word);
+                }
+            }
+        } else { // 恢复蓝灯
+            ultrasonic->setSolidColor(0, 0, 20, 0, 0, 20);
+        }
+        vTaskDelay(xDelay);
+    }
+}
+
+void Application::DoubleClick()
+{
+    std::string wake_word="向主人汇报危险,并通过MCP调用摄像头看前边有什么";
+    Application::GetInstance().WakeWordInvoke(wake_word);
 }
 
 void Application::CheckNewVersion(Ota& ota) {
@@ -443,6 +493,13 @@ void Application::Start() {
         vTaskDelete(NULL);
     }, "audio_loop", 4096 * 2, this, 8, &audio_loop_task_handle_);
 #endif
+
+    // 新增超声波传感器任务（优先级5，堆栈4096）
+    xTaskCreate([](void* arg) {
+        Application* app = (Application*)arg;
+        app->UltrasonicLoop();
+        vTaskDelete(NULL);
+    }, "ultrasonic", 4096, this, 5, &ultrasonic_task_handle_);
 
     /* Start the clock timer to update the status bar */
     esp_timer_start_periodic(clock_timer_handle_, 1000000);

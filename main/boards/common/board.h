@@ -10,6 +10,7 @@
 #include "led/led.h"
 #include "backlight.h"
 #include "camera.h"
+#include "ultrasound.h"
 
 void* create_board();
 class AudioCodec;
@@ -38,6 +39,7 @@ public:
     virtual Backlight* GetBacklight() { return nullptr; }
     virtual Led* GetLed();
     virtual AudioCodec* GetAudioCodec() = 0;
+    virtual Ultrasound* GetUltrasound() = 0;
     virtual bool GetTemperature(float& esp32temp);
     virtual Display* GetDisplay();
     virtual Camera* GetCamera();

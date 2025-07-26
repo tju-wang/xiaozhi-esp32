@@ -16,7 +16,7 @@
 #include <esp_lcd_touch_ft5x06.h>
 #include <esp_lvgl_port.h>
 #include <lvgl.h>
-
+#include "ultrasound.h"
 
 #define TAG "LichuangDevBoard"
 
@@ -76,6 +76,7 @@ private:
     LcdDisplay* display_;
     Pca9557* pca9557_;
     Esp32Camera* camera_;
+    Ultrasound* ultrasound_;
 
     void InitializeI2c() {
         // Initialize I2C peripheral
@@ -110,6 +111,7 @@ private:
 
     void InitializeButtons() {
         boot_button_.OnClick([this]() {
+            ESP_LOGI(TAG, "single click");
             auto& app = Application::GetInstance();
             if (app.GetDeviceState() == kDeviceStateStarting && !WifiStation::GetInstance().IsConnected()) {
                 ResetWifiConfiguration();
@@ -117,14 +119,17 @@ private:
             app.ToggleChatState();
         });
 
-#if CONFIG_USE_DEVICE_AEC
+// #if CONFIG_USE_DEVICE_AEC
         boot_button_.OnDoubleClick([this]() {
+            ESP_LOGI(TAG, "double click");
             auto& app = Application::GetInstance();
-            if (app.GetDeviceState() == kDeviceStateIdle) {
-                app.SetAecMode(app.GetAecMode() == kAecOff ? kAecOnDeviceSide : kAecOff);
-            }
+            app.SetDeviceState(kDeviceStateIdle);
+            app.DoubleClick();
+            // if (app.GetDeviceState() == kDeviceStateIdle) {
+            //     app.SetAecMode(app.GetAecMode() == kAecOff ? kAecOnDeviceSide : kAecOff);
+            // }
         });
-#endif
+// #endif
     }
 
     void InitializeSt7789Display() {
@@ -240,14 +245,19 @@ private:
         camera_ = new Esp32Camera(config);
     }
 
+    void InitializeUltrasound() {
+        ultrasound_ = new Ultrasound(i2c_bus_, ULTRASOUND_I2C_ADDR);
+    }
+
 public:
     LichuangDevBoard() : boot_button_(BOOT_BUTTON_GPIO) {
         InitializeI2c();
         InitializeSpi();
         InitializeSt7789Display();
-        InitializeTouch();
+        // InitializeTouch();
         InitializeButtons();
         InitializeCamera();
+        InitializeUltrasound();
 
 #if CONFIG_IOT_PROTOCOL_XIAOZHI
         auto& thing_manager = iot::ThingManager::GetInstance();
@@ -275,6 +285,10 @@ public:
 
     virtual Camera* GetCamera() override {
         return camera_;
+    }
+
+    virtual Ultrasound* GetUltrasound() override {
+        return ultrasound_;
     }
 };
 

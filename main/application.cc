@@ -118,36 +118,99 @@ int Filter(Ultrasound* ultrasonic) {
 
 void Application::UltrasonicLoop() {
     auto ultrasonic = Board::GetInstance().GetUltrasound();
-    constexpr TickType_t xDelay = pdMS_TO_TICKS(100); // 100ms间隔
-    
+    constexpr TickType_t xDelay = pdMS_TO_TICKS(600); // 100ms间隔
+    static int count = 0;
     while (true) {
+        count++;
         uint16_t distance = Filter(ultrasonic);
         // 处理测量数据...
-        // ESP_LOGI(TAG, "Ultrasonic distance: %d mm", distance);
-
-        if (distance < 1000) { // 距离<50cm切换红灯
-            ultrasonic->setSolidColor(20, 0, 0, 20, 0, 0);
-
-            if (distance < 500) {
-                //Trigger
-                ultrasonic->setBreathingMode(1, 0, 0, 1, 0, 0);
-                if (device_state_ == kDeviceStateIdle) {
-                    ESP_LOGI(TAG, "call WakeWordInvoke %d", device_state_);
-                    std::string wake_word="向主人汇报危险,并通过MCP调用摄像头看前边有什么";
-                    Application::GetInstance().WakeWordInvoke(wake_word);
-                }
+        ESP_LOGI(TAG, "count %d Ultrasonic distance: %d mm", count, distance);
+        if (distance < 1000 && broadcastDistance) {
+            ultrasonic->setSolidColor(0, 0, 50, 0, 0, 50);
+            if (distance > 700) {
+                ResetDecoder();
+                PlaySound(Lang::Sounds::P3_70);
             }
-        } else { // 恢复蓝灯
-            ultrasonic->setSolidColor(0, 0, 20, 0, 0, 20);
+            else if(distance > 600)
+            {
+                ResetDecoder();
+                PlaySound(Lang::Sounds::P3_60);
+            }
+            else if(distance > 550)
+            {
+                ResetDecoder();
+                PlaySound(Lang::Sounds::P3_55);
+            }
+            else if(distance > 500)
+            {
+                ResetDecoder();
+                PlaySound(Lang::Sounds::P3_50);
+            }
+            else if(distance > 450)
+            {
+                ResetDecoder();
+                PlaySound(Lang::Sounds::P3_45);
+            }
+            else if(distance > 400)
+            {
+                ResetDecoder();
+                PlaySound(Lang::Sounds::P3_40);
+            }
+            else if(distance > 350)
+            {
+                ResetDecoder();
+                PlaySound(Lang::Sounds::P3_35);
+            }
+            else if(distance > 300)
+            {
+                ResetDecoder();
+                PlaySound(Lang::Sounds::P3_30);
+            }
+            else if(distance > 250)
+            {
+                ResetDecoder();
+                PlaySound(Lang::Sounds::P3_25);
+            }
+            else if(distance > 200)
+            {
+                ResetDecoder();
+                PlaySound(Lang::Sounds::P3_20);
+            }
+            else if(distance > 150)
+            {
+                ResetDecoder();
+                PlaySound(Lang::Sounds::P3_15);
+            }
+            else if(distance > 100)
+            {
+                ResetDecoder();
+                PlaySound(Lang::Sounds::P3_10);
+            }
+            else
+            {
+                ResetDecoder();
+                PlaySound(Lang::Sounds::P3_NEAR10);
+            }
+        } else if(distance > 1000) { // 大于1米，设置为红色
+            ultrasonic->setSolidColor(50, 0, 0, 50, 0, 0);
+        } else {    //设置为绿色
+            ultrasonic->setSolidColor(0, 50, 0, 0, 50, 0);
         }
+
+        ESP_LOGI(TAG, "count %d", count);
         vTaskDelay(xDelay);
     }
 }
 
 void Application::DoubleClick()
 {
-    std::string wake_word="向主人汇报危险,并通过MCP调用摄像头看前边有什么";
+    std::string wake_word="调用MCP重新打开摄像头,看一下前边有什么，播报详细的内容";
     Application::GetInstance().WakeWordInvoke(wake_word);
+}
+
+void Application::LongClick()
+{
+    broadcastDistance = !broadcastDistance;
 }
 
 void Application::CheckNewVersion(Ota& ota) {
@@ -263,6 +326,9 @@ void Application::ShowActivationCode(const std::string& code, const std::string&
         char digit;
         const std::string_view& sound;
     };
+    
+    ESP_LOGW(TAG, "[wx] debug code %s message %s", code.c_str(), message.c_str());
+
     static const std::array<digit_sound, 10> digit_sounds{{
         digit_sound{'0', Lang::Sounds::P3_0},
         digit_sound{'1', Lang::Sounds::P3_1}, 
@@ -499,7 +565,7 @@ void Application::Start() {
         Application* app = (Application*)arg;
         app->UltrasonicLoop();
         vTaskDelete(NULL);
-    }, "ultrasonic", 4096, this, 5, &ultrasonic_task_handle_);
+    }, "ultrasonic", 4096, this, 10, &ultrasonic_task_handle_);
 
     /* Start the clock timer to update the status bar */
     esp_timer_start_periodic(clock_timer_handle_, 1000000);

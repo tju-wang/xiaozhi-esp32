@@ -130,6 +130,13 @@ private:
             // }
         });
 // #endif
+
+        boot_button_.OnLongPress([this]() {
+            ESP_LOGI(TAG, "long click");
+            auto& app = Application::GetInstance();
+            app.SetDeviceState(kDeviceStateIdle);
+            app.LongClick();
+        });
     }
 
     void InitializeSt7789Display() {

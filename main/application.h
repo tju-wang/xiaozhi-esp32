@@ -84,6 +84,7 @@ public:
     AecMode GetAecMode() const { return aec_mode_; }
     BackgroundTask* GetBackgroundTask() const { return background_task_; }
     void DoubleClick();
+    void LongClick();
 
 private:
     Application();
@@ -107,6 +108,7 @@ private:
     bool busy_decoding_audio_ = false;
     int clock_ticks_ = 0;
     TaskHandle_t check_new_version_task_handle_ = nullptr;
+    bool broadcastDistance = false;
 
     // Audio encode / decode
     TaskHandle_t audio_loop_task_handle_ = nullptr;

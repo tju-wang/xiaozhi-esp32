@@ -262,7 +262,7 @@ private:
     {
         const int len = strlen(data);
         const int txBytes = uart_write_bytes(UART_NUM_1, data, len);
-        ESP_LOGI(logName, "uart send %d bytes", txBytes);
+        ESP_LOGI(logName, "uart send %d bytes cmd: %s", txBytes, data);
         return txBytes;
     }
 
@@ -285,13 +285,22 @@ public:
 
         mcp_server.AddTool("self.dog.action_group", "机器人预设动作组。可用动作组及编号:\n"
             "1: 左脚踢球\n2: 右脚踢球\n3: 四脚站立\n4: 坐下\n5: 趴下\n6: 双脚站立\n7: 握手\n8: 作揖\n"
-            "9: 点头\n10: 拳击\n11: 伸懒腰\n12: 撒尿\n13: 俯卧撑\n14: 转动PITCH\n15: 转动ROLL\n16: 立正",
+            "9: 点头\n10: 拳击\n11: 伸懒腰\n12: 撒尿\n13: 俯卧撑\n14: 转动PITCH\n15: 转动ROLL\n16: 立正\n17: 跳舞",
             PropertyList({
                 Property("action_number", kPropertyTypeInteger),
             }), [this](const PropertyList& properties) -> ReturnValue {
                 int action = properties["action_number"].value<int>();
                 std::string command = "CMD|2|1|" + std::to_string(action) + "|$";
                 sendUartData("action_group", command.c_str());
+                // if (action == 17) {
+                //     //播放跳舞音乐
+                //     auto& app = Application::GetInstance();
+                //     app.SetDeviceState(kDeviceStateSpeaking);
+                //     ESP_LOGI("groupAction", "playDanceMusic...");
+                //     //MCP服务需要及时返回,否则会触发设备重启  启动另外的线程播放音乐？
+                //     app.PlayDanceMusic();
+                //     ESP_LOGI("groupAction", "playDanceMusic...  end");
+                // }
                 return true;
             });
 

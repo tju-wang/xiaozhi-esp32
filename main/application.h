@@ -84,6 +84,8 @@ public:
     AecMode GetAecMode() const { return aec_mode_; }
     BackgroundTask* GetBackgroundTask() const { return background_task_; }
 
+    // 新增：播放音乐
+    void PlayDanceMusic();
 private:
     Application();
     ~Application();
